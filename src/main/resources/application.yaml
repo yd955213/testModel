@@ -1,0 +1,6 @@
+server:
+  port: 19101
+logging:
+  config: classpath:log4j.xml
+  level:
+    com.example.demo: info
