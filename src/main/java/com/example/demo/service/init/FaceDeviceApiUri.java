@@ -4,10 +4,10 @@ package com.example.demo.service.init;
  * @author: yd
  * @date: 2022-02-11
  * @version: 1.0
- * @description:
+ * @description: 人脸设备对外提供的 uri
  * @modifiedBy:
  */
-public interface FaceDeviceApi {
+public interface FaceDeviceApiUri {
     String uriPrefix = "/DevApi/";
     String getDeviceParams = uriPrefix + "GetDeviceParams";
     String setDeviceParams = uriPrefix + "SetDeviceParams";

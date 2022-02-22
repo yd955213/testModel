@@ -1,6 +1,5 @@
 package com.example.demo.utils.photo;
 
-import com.example.demo.entity.api.DownloadAuthorityData;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.util.ResourceUtils;
 
@@ -19,8 +18,8 @@ public class ImageTools {
 
     /**
      * 获取文件目录下的所有文件路径
-     * @param directoryPath
-     * @return
+     * @param directoryPath directoryPath
+     * @return List<String>
      */
     public List<String> getAllFilePathsInDirectory(String directoryPath) throws FileNotFoundException {
         File files = ResourceUtils.getFile(directoryPath);

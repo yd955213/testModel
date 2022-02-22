@@ -1,6 +1,5 @@
 package com.example.demo.entity.base;
 
-import com.example.demo.entity.api.DeviceHeartBeat;
 import lombok.Data;
 import org.springframework.stereotype.Repository;
 
@@ -17,4 +16,6 @@ public class DeviceInfo {
     public Integer devicePort;
     public String deviceIp;
     public String deviceUniqueCode;
+    public String timeStamp;
+    public Long currentTime;
 }

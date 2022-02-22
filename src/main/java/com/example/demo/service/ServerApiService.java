@@ -13,7 +13,7 @@ public interface ServerApiService {
     String save(Request<DeviceHeartBeat> devicesHeartBeatServiceRequest);
     String noticeOfDownloadAuthorityData(Request<NoticeOfDownloadAuthorityData> noticeOfDownloadAuthorityDataRequest);
     String uploadAuthorityDealResult(Request<UploadAuthorityDealResult> uploadAuthorityDealResultRequest);
-    String upLoadRecords(Request request);
+    String upLoadRecords(Request<UpLoadRecords> request);
     String noticeOfDeviceParamsUpdate(Request request);
     String noticeOfCardSystemInit(Request request);
     String noticeOfUpgradeApp(Request request);

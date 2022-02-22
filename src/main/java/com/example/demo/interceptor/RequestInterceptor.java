@@ -5,6 +5,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.example.demo.entity.api.DeviceHeartBeat;
 import com.example.demo.entity.api.Request;
 import com.example.demo.entity.base.DeviceInfo;
+import com.example.demo.service.init.DeviceInfoMap;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StreamUtils;
@@ -12,8 +13,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -27,11 +26,7 @@ import java.util.Map;
 @Log4j2
 public class RequestInterceptor implements HandlerInterceptor {
 
-    private static Map<String, DeviceInfo> deviceInfoMap = Collections.synchronizedMap(new HashMap<>());
-
-    public static Map<String, DeviceInfo> getDeviceInfoMap() {
-        return deviceInfoMap;
-    }
+    private final Map<String, DeviceInfo> deviceInfoMap = DeviceInfoMap.getDeviceInfoMap();
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -47,14 +42,15 @@ public class RequestInterceptor implements HandlerInterceptor {
         //获取请求body
         byte[] bodyBytes = StreamUtils.copyToByteArray(request.getInputStream());
         String body = new String(bodyBytes, request.getCharacterEncoding());
-
-        log.info("请求体：{}", body);
+        // 记录上报数据量过大，不打印日志
+        if(!"/ServerApi/UploadRecords".equals(queryString))
+            log.info("请求体：{}", body);
 
         if("/ServerApi/DeviceHeartBeat".equals(queryString)){
             Request<DeviceHeartBeat> requestJson = JSONObject.parseObject(body, new TypeReference<Request<DeviceHeartBeat>>(){}.getType());
             if (requestJson != null){
                 // 如果Ip 和端口变话 则修改
-                if (deviceInfoMap.keySet().contains(requestJson.getDeviceUniqueCode())){
+                if (deviceInfoMap.containsKey(requestJson.getDeviceUniqueCode())){
                     if(!ip.equals(deviceInfoMap.get(requestJson.getDeviceUniqueCode()).getDeviceIp())){
                         deviceInfoMap.get(requestJson.getDeviceUniqueCode()).setDeviceIp(ip);
                     }

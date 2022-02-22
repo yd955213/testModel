@@ -23,7 +23,7 @@ public class RequestInterceptorWebMvcConfig implements WebMvcConfigurer {
   @Resource
   private RequestInterceptor requestInterceptor;
   @Override
-  /**
+  /*
    * 配置拦截器
    */
   public void addInterceptors(InterceptorRegistry registry) {

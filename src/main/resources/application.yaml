@@ -4,3 +4,51 @@ logging:
   config: classpath:log4j.xml
   level:
     com.example.demo: info
+
+dev:
+  test: 123
+  controlGroup:
+  - A
+  - b
+  - c
+  - d
+  - e
+  recognitionGroup:
+  - A1
+  - b1
+  - c1
+  - d1
+  - e1
+  recognitionAndDownloadAuthorityGroup:
+  - 103A6F
+  - 103A49
+  - 103A36
+  - 103A48
+  - 103A30
+  openAndCloseGroup:
+  - 103A35
+  - 103A32
+  - 103A2E
+  - 103A37
+  - 6D19A9
+
+# 设备重启测试，支持tpye: ssh，adb 微信公众号
+reboot:
+  type: ssh
+
+configs:
+  ssh:
+    userName: root
+    password: das123
+    port: 22
+#    测试用
+#    userName: root
+#    password: 123
+#    port: 8911
+
+picture:
+  filePath: E:\02人脸测试111\1人脸库\真人 - 副本
+
+WX:
+  AppID: wxd1b7519d80037a2a
+  AppSecret: 43b4b83682757fc72e28eed43934691b

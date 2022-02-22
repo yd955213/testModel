@@ -36,8 +36,8 @@ public class ServerApiController {
      * 离线时数据缓存在设备内，待网络恢复后再上报
      */
     @PostMapping("/UploadRecords")
-    public String upLoadRecords(@RequestBody Request<UploadAuthorityDealResult> uploadAuthorityDealResultRequest){
-        return devicesHeartBeatService.upLoadRecords(uploadAuthorityDealResultRequest);
+    public String upLoadRecords(@RequestBody Request<UpLoadRecords> upLoadRecordsRequest){
+        return devicesHeartBeatService.upLoadRecords(upLoadRecordsRequest);
     }
 
     /**
