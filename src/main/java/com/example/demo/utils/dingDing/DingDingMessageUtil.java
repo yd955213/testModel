@@ -38,6 +38,7 @@ public class DingDingMessageUtil {
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
         URI uri = builder.queryParams(multiValueMap).build().encode().toUri();
         System.out.println(uri);
+        System.out.println(uri.toString());
         System.out.println(dingDingMessage);
         // 内部类没有 自动注入未成功，为啥呢？
 //        dingDingMessage.getText().setContent(massage);

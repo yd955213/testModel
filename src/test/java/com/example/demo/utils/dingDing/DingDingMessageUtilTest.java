@@ -22,4 +22,5 @@ class DingDingMessageUtilTest {
     void sendMassage() {
         dingDingMessageUtil.sendMassage("测试一下");
     }
+
 }

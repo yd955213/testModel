@@ -120,7 +120,7 @@ public class ServerApiServiceImpl implements ServerApiService {
 
         String requestParam = JsonUtils.toJsonStringNotNull(downloadAuthorityDataRequest,
                 new TypeToken<Request<List<DownloadAuthorityData>>>() {}.getType());
-
+//        log.info("权限下载参数：{}", requestParam);
         /*
         发送权限下发请求
          */

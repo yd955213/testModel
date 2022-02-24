@@ -79,7 +79,7 @@ public class TestInfoServiceImpl implements TestInfoService {
             clearDeviceDataRequest.setDeviceUniqueCode(mac);
 
             String url = UrlUtil.getUrl(deviceInfo.getDeviceIp(), deviceInfo.getDevicePort(), FaceDeviceApiUri.clearDeviceData);
-            restTemplateUtil.post(url, JsonUtils.toJsonStringNotNull(clearDeviceDataRequest, new TypeToken<Request<ClearDeviceData>>(){}.getType()));
+            restTemplateUtil.post(url.toString(), JsonUtils.toJsonStringNotNull(clearDeviceDataRequest, new TypeToken<Request<ClearDeviceData>>(){}.getType()));
         });
         return "ok";
     }

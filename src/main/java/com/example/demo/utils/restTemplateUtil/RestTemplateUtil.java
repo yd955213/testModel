@@ -14,7 +14,6 @@ import java.io.File;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * @author: yd
@@ -67,7 +66,7 @@ public class RestTemplateUtil {
      */
     public String post(String url, String requestParamJson){
         HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        httpHeaders.setContentType(MediaType.valueOf(MediaType.APPLICATION_JSON_VALUE));
         HttpEntity<String> httpEntity = new HttpEntity<>(requestParamJson, httpHeaders);
         ResponseEntity<String> responseEntity;
         try {
@@ -82,12 +81,12 @@ public class RestTemplateUtil {
     }
     public String post(URI url, String requestParamJson){
         HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        httpHeaders.setContentType(MediaType.valueOf(MediaType.APPLICATION_JSON_VALUE));
         HttpEntity<String> httpEntity = new HttpEntity<>(requestParamJson, httpHeaders);
         ResponseEntity<String> responseEntity;
         try {
             log.info("post请求：url:{}, 参数：{}", url, requestParamJson);
-            responseEntity = restTemplate.exchange(url,HttpMethod.POST, httpEntity, String.class);
+            responseEntity = restTemplate.postForEntity(url, httpEntity, String.class);
             log.info("post请求成功：url:{} ,返回信息：{}", url, responseEntity.getBody());
             return responseEntity.getBody();
         }catch (Exception e){

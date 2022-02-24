@@ -29,7 +29,7 @@ class CommonTaskTest {
 
     @Test
     void start(){
-        commonTask.start();
+        commonTask.downLoadAuthority();
     }
 
     @Test

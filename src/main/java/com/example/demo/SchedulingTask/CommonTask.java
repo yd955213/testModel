@@ -63,7 +63,7 @@ public class CommonTask {
     ServerApiServiceImpl serverApiServiceImpl;
     // cron表达式 每15分钟执行一次
     @Scheduled(cron = "0 */15 * * * ?")
-    public void start() {
+    public void downLoadAuthority() {
 
         log.info("定时任务：每15分钟进行一次权限下载");
         DeviceInfoMap.setDownloadMapTrue(devPropertiesConfig.getRecognitionAndDownloadAuthorityGroup());
@@ -156,9 +156,9 @@ public class CommonTask {
             int error = ObjectUtils.isEmpty(errorPersonHashMap) ? 0 : tempCount.get();
             msg = String.format(msg, value, error);
             download.put(key, msg);
-            HashSet<String> nameSet = new HashSet<>();
-            errorPersonHashMap.keySet().forEach( uniqueCodeTemp -> nameSet.add(errorPersonHashMap.get(uniqueCodeTemp).getUniqueCode()));
-            log.info("下载权限失败人员姓名集合：" + nameSet);
+//            HashSet<String> nameSet = new HashSet<>();
+//            errorPersonHashMap.keySet().forEach( uniqueCodeTemp -> nameSet.add(errorPersonHashMap.get(uniqueCodeTemp).getUniqueCode()));
+//            log.info("下载权限失败人员姓名集合：" + nameSet);
         });
         downInfo = " 权限下载信息：" + download;
         log.info("定时任务,每1分钟刷新一次测试信息：{}", testInfo + downInfo);

@@ -94,9 +94,11 @@ public class SSHConnect {
      * @param command 命令
      */
     public void executeCommand(String serverIP, String command){
-        if (session ==null) {
-            createSshConnect(serverIP);
+        if (session != null) {
+            disconnect();
+            session = null;
         }
+        createSshConnect(serverIP);
         executeCommand(command);
         disconnect();
     }
