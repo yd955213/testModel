@@ -2,7 +2,6 @@ package com.example.demo.conctroller;
 
 import com.example.demo.entity.api.*;
 import com.example.demo.service.impl.ServerApiServiceImpl;
-import com.example.demo.utils.JsonUtils;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +54,7 @@ public class ServerApiController {
      * 暂时不做处理
      */
     @PostMapping("/NoticeOfDeviceParamsUpdate")
-    public String noticeOfDeviceParamsUpdate(@RequestBody Request request){
+    public String noticeOfDeviceParamsUpdate(@RequestBody Request<NoticeOfDeviceParamsUpdate> request){
         return devicesHeartBeatService.noticeOfDeviceParamsUpdate(request);
     }
 
@@ -65,7 +64,7 @@ public class ServerApiController {
      * 暂时不做处理
      */
     @PostMapping("/NoticeOfCardSystemInit")
-    public String noticeOfCardSystemInit(@RequestBody Request request){
+    public String noticeOfCardSystemInit(@RequestBody Request<NoticeOfCardSystemInit> request){
         return devicesHeartBeatService.noticeOfCardSystemInit(request);
     }
 
@@ -80,28 +79,26 @@ public class ServerApiController {
 
     /**
      * 3.7设备升级完成通知
-     * 暂时不做处理
      */
     @PostMapping("/NoticeOfUpgradeApp")
-    public String noticeOfUpgradeApp(@RequestBody Request request){
+    public String noticeOfUpgradeApp(@RequestBody Request<NoticeOfUpgradeApp> request){
+
         return devicesHeartBeatService.noticeOfUpgradeApp(request);
     }
     /**
      * 3.8重置权限数据通知
-     * 暂时不做处理
      */
     @PostMapping("/NoticeOfResetAuthorityData")
-    public String noticeOfResetAuthorityData(@RequestBody Request request){
+    public String noticeOfResetAuthorityData(@RequestBody Request<String> request){
         return devicesHeartBeatService.noticeOfResetAuthorityData(request);
     }
 
     /**
      *3.9获取人员通行权限
      * 设备开启防潜回功能时，识别人员后是否允许通行，由服务端根据设备的进场、出场、区域属性以及人员的历史进出记录等条件来判断。禁止通行的场景包括但不限于：已进未出时企图再次进场，已出未进时企图再次出场等
-     * 暂时不做处理
      */
     @PostMapping("/GetAccessPermission")
-    public String getAccessPermission(@RequestBody Request request){
+    public String getAccessPermission(@RequestBody Request<GetAccessPermissionRequest> request){
         return devicesHeartBeatService.getAccessPermission(request);
     }
 
@@ -110,7 +107,7 @@ public class ServerApiController {
      * 暂时不做处理
      */
     @PostMapping("/UploadDoorStatus")
-    public String uploadDoorStatus(@RequestBody Request request){
+    public String uploadDoorStatus(@RequestBody Request<UploadDoorStatus> request){
         return devicesHeartBeatService.uploadDoorStatus(request);
     }
 }

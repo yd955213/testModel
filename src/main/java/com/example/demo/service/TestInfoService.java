@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.ModelAndView;
 
 /**
  * @author: yd
@@ -16,4 +17,9 @@ public interface TestInfoService {
     String downErrorInfo(String dev);
     String clearAllDeviceData();
     ResponseEntity<FileSystemResource> downAuthorityErrorInfo();
+    String clearDownloadedAuthorityAll();
+    String clearDownloadedAuthority(String dev);
+    String refreshCacheData();
+    String downloadAuthorityByUserName(String deviceUniqueCode, String uniqueCode);
+//    ModelAndView showImage(){}
 }

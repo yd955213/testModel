@@ -19,7 +19,6 @@ import org.springframework.util.ObjectUtils;
  * @modifiedBy:
  */
 @Controller
-//@RequestMapping("/cgi-bin")
 @Log4j2
 public class WechatNumberController {
     String hostIP = "https://sz.api.weixin.qq.com";
@@ -31,12 +30,6 @@ public class WechatNumberController {
 
     public AccessToken  getAccessToken(){
 //        String url = "https://sz.api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wxd1b7519d80037a2a&secret=43b4b83682757fc72e28eed43934691b";
-//        HttpHeaders headers = HttpHeadersUtil.getHeaders();
-////        HttpEntity<String> httpEntity = new HttpEntity<>(headers);
-//        ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
-//        System.out.println(responseEntity);
-//        AccessToken accessToken = JsonUtils.parseObject(responseEntity.getBody(), AccessToken.class);
-//        System.out.println(accessToken);
 
         String url = hostIP + "/cgi-bin/token";
         // get 请求参数

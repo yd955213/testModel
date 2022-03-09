@@ -28,7 +28,6 @@
             <scope>test</scope>
         </dependency>
 
-
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -85,6 +84,39 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.11.0</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <version>2.6.3</version>
+        </dependency>
+<!--        处理图片 Thumbnails： 按比例缩放，固定尺寸缩放，按尺寸等比缩放，旋转，加水印，压缩图片质量-->
+        <!-- https://mvnrepository.com/artifact/net.coobird/thumbnailator -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.17</version>
+        </dependency>
+        <!--  twelvemonkeys是一个图片编解码库-->
+<!--         https://mvnrepository.com/artifact/com.twelvemonkeys.imageio/imageio-tiff-->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-tiff</artifactId>
+            <version>3.8.2</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.twelvemonkeys.imageio/imageio-jpeg -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>3.8.2</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.twelvemonkeys.servlet/servlet -->
+        <dependency>
+            <groupId>com.twelvemonkeys.servlet</groupId>
+            <artifactId>servlet</artifactId>
+            <version>3.8.2</version>
         </dependency>
 
     </dependencies>

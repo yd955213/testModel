@@ -14,12 +14,12 @@ public interface ServerApiService {
     String noticeOfDownloadAuthorityData(Request<NoticeOfDownloadAuthorityData> noticeOfDownloadAuthorityDataRequest);
     String uploadAuthorityDealResult(Request<UploadAuthorityDealResult> uploadAuthorityDealResultRequest);
     String upLoadRecords(Request<UpLoadRecords> request);
-    String noticeOfDeviceParamsUpdate(Request request);
-    String noticeOfCardSystemInit(Request request);
-    String noticeOfUpgradeApp(Request request);
-    String noticeOfResetAuthorityData(Request request);
+    String noticeOfDeviceParamsUpdate(Request<NoticeOfDeviceParamsUpdate> request);
+    String noticeOfCardSystemInit(Request<NoticeOfCardSystemInit> request);
+    String noticeOfUpgradeApp(Request<NoticeOfUpgradeApp> request);
+    String noticeOfResetAuthorityData(Request<String> request);
 
-    String getAccessPermission(Request request);
+    String getAccessPermission(Request<GetAccessPermissionRequest> request);
 
-    String uploadDoorStatus(Request request);
+    String uploadDoorStatus(Request<UploadDoorStatus> request);
 }

@@ -1,26 +1,25 @@
 package com.example.demo.service.impl;
 
-import com.alibaba.fastjson.JSONObject;
+
 import com.example.demo.SchedulingTask.CommonTask;
 import com.example.demo.entity.api.ClearDeviceData;
+import com.example.demo.entity.api.DownloadAuthorityData;
 import com.example.demo.entity.api.Request;
-import com.example.demo.entity.base.DeviceInfo;
+import com.example.demo.entity.commonInterface.GlobalVariable;
 import com.example.demo.service.TestInfoService;
-import com.example.demo.service.init.DeviceInfoMap;
-import com.example.demo.service.init.FaceDeviceApiUri;
-import com.example.demo.service.init.PersonInfo;
-import com.example.demo.utils.FileUtil;
+import com.example.demo.service.init.*;
 import com.example.demo.utils.JsonUtils;
 import com.example.demo.utils.MyLocalTimeUtil;
+import com.example.demo.utils.redis.RedisUtil;
 import com.example.demo.utils.restTemplateUtil.RestTemplateUtil;
 import com.example.demo.utils.restTemplateUtil.UrlUtil;
 import com.google.gson.reflect.TypeToken;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import java.io.File;
 import java.util.*;
 
 /**
@@ -31,15 +30,23 @@ import java.util.*;
  * @modifiedBy:
  */
 @Service("testInfoService")
+@Slf4j
 public class TestInfoServiceImpl implements TestInfoService {
+    @Autowired
+    RedisUtil redisUtil;
+    @Autowired
+    DeviceInfoManage deviceInfoManage;
+    @Autowired
+    PersonInfoManage personInfoManage;
+
     @Override
     public String getTestInfo() {
         return "<p>" + CommonTask.getTestInfo() + "</p>" +
-        "<p>" + CommonTask.getDownInfo() + "</p>" +
-        "<p>" +  "设备上报记录数：" + DeviceInfoMap.getRecordsHashMap() + "</p>" +
-        "<p>" + "权限对比：" + DeviceInfoMap.getContrastMap() + "</p>" +
-        "<p>" + "设备定时重启次数：" + DeviceInfoMap.getDeviceRebootMap().toString() + "</p>" +
-        "<p>" + "权限下载错误信息：" + PersonInfo.getDownErrorInfoMap().toString() + "</p>";
+                "<p>" + CommonTask.getDownInfo() + "</p>" +
+                "<p>" + "设备上报记录数：" + deviceInfoManage.getAllRecordCount() + "</p>" +
+                "<p>" + "权限对比：" + CommonTask.getContrastMassage()+ "</p>" +
+                "<p>" + "设备定时重启次数：" + deviceInfoManage.getALLDeviceRebootCount() + "</p>" +
+                "<p>" + "权限下载错误信息：" + personInfoManage.getAllDownloadAuthorityFailMassage() + "</p>";
     }
 
     @Autowired
@@ -48,16 +55,14 @@ public class TestInfoServiceImpl implements TestInfoService {
     @Override
     public String downloadAuthority() {
         // 由于进行权限下载时，设备不及时返回，这里开一个线程去处理
-        new Thread(() -> DeviceInfoMap.getDeviceInfoMap().keySet().forEach(mac -> serverApiServiceImpl.downloadAuthority(mac))).start();
+        new Thread(() -> deviceInfoManage.getDeviceUniqueCodeSet().forEach(mac -> serverApiServiceImpl.downloadAuthority(mac))).start();
         return "ok";
     }
 
     @Override
     public String downErrorInfo(String dev) {
 
-        Map<String, HashMap<String, PersonInfo.ErrorPerson>> downErrorInfoMap = PersonInfo.getDownErrorInfoMap();
-        HashMap<String, PersonInfo.ErrorPerson> devErr = downErrorInfoMap.containsKey(dev) ? downErrorInfoMap.get(dev) : new HashMap<>();
-        return JSONObject.toJSONString(devErr);
+        return personInfoManage.getAllDownloadAuthorityFailMassage();
     }
 
     @Autowired
@@ -67,8 +72,8 @@ public class TestInfoServiceImpl implements TestInfoService {
 
     @Override
     public String clearAllDeviceData() {
-        Map<String, DeviceInfo> deviceInfoMap = DeviceInfoMap.getDeviceInfoMap();
-        deviceInfoMap.forEach((mac, deviceInfo) ->{
+        Set<String> deviceUniqueCodeSet = deviceInfoManage.getDeviceUniqueCodeSet();
+        deviceUniqueCodeSet.forEach(mac -> {
             clearDeviceData.setClearLog("Y");
             clearDeviceData.setClearPerson("Y");
             clearDeviceData.setClearPassRecord("N");
@@ -78,37 +83,80 @@ public class TestInfoServiceImpl implements TestInfoService {
             clearDeviceDataRequest.setTimeStamp(MyLocalTimeUtil.getLocalDataTime());
             clearDeviceDataRequest.setDeviceUniqueCode(mac);
 
-            String url = UrlUtil.getUrl(deviceInfo.getDeviceIp(), deviceInfo.getDevicePort(), FaceDeviceApiUri.clearDeviceData);
-            restTemplateUtil.post(url.toString(), JsonUtils.toJsonStringNotNull(clearDeviceDataRequest, new TypeToken<Request<ClearDeviceData>>(){}.getType()));
+            String url = UrlUtil.getUrl(
+                    deviceInfoManage.getDeviceIp(mac),
+                    deviceInfoManage.getDevicePort(mac),
+                    FaceDeviceApiUri.clearDeviceData
+            );
+            restTemplateUtil.post(url,
+                    JsonUtils.toJsonStringNotNull(clearDeviceDataRequest, new TypeToken<Request<ClearDeviceData>>() {
+                    }.getType()));
         });
         return "ok";
     }
 
     @Value("${picture.filePath}")
     String filePath;
+
     @Override
     public ResponseEntity<FileSystemResource> downAuthorityErrorInfo() {
-
-        String zipFilePath= new File("").getAbsolutePath() + "/data/权限下载失败照片.zip";
-        File file = new File(zipFilePath);
-        if(!file.exists()){
-            Set<String> personSet = new HashSet<>();
-            PersonInfo.getDownErrorInfoMap().forEach((mac, errorPersonHashMap) ->{
-                errorPersonHashMap.forEach((uniqueCode, errorPerson) -> {
-//                try {
-//                    File file = ResourceUtils.getFile(filePath);
-//                personSet.add(filePath+"\\" + errorPerson.getUniqueCode() + ".jpg");
-                    personSet.add("E:\\02人脸测试111\\1人脸库\\真人 - 副本/" + errorPerson.getUniqueCode() + ".jpg");
-//                } catch (FileNotFoundException e) {
-//                    e.printStackTrace();
-//                }
-                });
-            });
-            List<File> personList = new ArrayList<>();
-            personSet.forEach(filePath -> personList.add(new File(filePath)));
-            zipFilePath = new FileUtil().toZip(personList, null);
-        }
-
-       return restTemplateUtil.upload(zipFilePath);
+        String zipFilePath = personInfoManage.zipAllDownloadFailPicture();
+        return restTemplateUtil.upload(zipFilePath);
     }
+
+    @Override
+    public String clearDownloadedAuthorityAll() {
+        deviceInfoManage.clearDownloadedAuthorityAll();
+        return "ok";
+    }
+
+    @Override
+    public String clearDownloadedAuthority(String dev) {
+        deviceInfoManage.clearDownloadedAuthority(dev);
+        return "ok";
+    }
+    @Autowired
+    PersonInfoDao personInfoDao;
+    @Autowired
+    DeviceInfoDao deviceInfoDao;
+    @Override
+    public String refreshCacheData(){
+        String msg = "ok";
+        try {
+            deviceInfoDao.init();
+            personInfoDao.init();
+        }catch (Exception e){
+            msg = e.getMessage();
+        }
+        return  msg;
+    }
+
+    @Override
+    public String downloadAuthorityByUserName(String deviceUniqueCode, String uniqueCode) {
+
+        DownloadAuthorityData downloadAuthorityData = personInfoDao.getDownloadAuthorityData(uniqueCode);
+        List<DownloadAuthorityData> downloadAuthorityDataList = Arrays.asList(downloadAuthorityData);
+
+        Request<List<DownloadAuthorityData>> requestParamsBean = new Request<>();
+        requestParamsBean.setDeviceUniqueCode(deviceUniqueCode);
+        requestParamsBean.setTimeStamp(MyLocalTimeUtil.getLocalDataTime());
+        requestParamsBean.setData(downloadAuthorityDataList);
+
+        String requestParam = JsonUtils.toJsonStringNotNull(requestParamsBean,
+                new TypeToken<Request<List<DownloadAuthorityData>>>() {
+                }.getType());
+
+        String deviceIp = deviceInfoManage.getDeviceIp(deviceUniqueCode);
+        String devicePort = deviceInfoManage.getDevicePort(deviceUniqueCode);
+
+        String url = UrlUtil.getUrl(deviceIp,devicePort,
+                FaceDeviceApiUri.downloadAuthorityData);
+        log.info("下载人员身份数据：Url={}, 数据长度：{}", url, requestParam.length());
+        restTemplateUtil.post(url, requestParam);
+        return requestParam;
+    }
+//    @Override
+//    public ModelAndView showImage(){
+//        File file = new File(GlobalVariable.originalPhotoFilePath);
+//    }
 }

@@ -1,25 +1,23 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.entity.api.*;
-import com.example.demo.entity.base.DeviceInfo;
-import com.example.demo.entity.base.Record;
+import com.example.demo.entity.base.DeviceVersion;
+import com.example.demo.entity.commonInterface.RedisKeys;
 import com.example.demo.service.ServerApiService;
-import com.example.demo.service.init.DeviceInfoMap;
+import com.example.demo.service.init.DeviceInfoDao;
+import com.example.demo.service.init.DeviceInfoManage;
 import com.example.demo.service.init.FaceDeviceApiUri;
-import com.example.demo.service.init.PersonInfo;
+import com.example.demo.service.init.PersonInfoManage;
 import com.example.demo.utils.JsonUtils;
 import com.example.demo.utils.MyLocalTimeUtil;
+import com.example.demo.utils.redis.RedisUtil;
+import com.example.demo.utils.restTemplateUtil.RestTemplateUtil;
 import com.example.demo.utils.restTemplateUtil.UrlUtil;
 import com.google.gson.reflect.TypeToken;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ObjectUtils;
-import org.springframework.web.client.RestTemplate;
-import com.example.demo.utils.restTemplateUtil.HttpHeadersUtil;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -36,13 +34,18 @@ import java.util.concurrent.TimeUnit;
 public class ServerApiServiceImpl implements ServerApiService {
 
     @Autowired
-    RestTemplate restTemplate;
+    RestTemplateUtil restTemplateUtil;
     @Autowired
-    PersonInfo personInfo;
+    PersonInfoManage personInfoManage;
+    @Autowired
+    RedisUtil redisUtil;
+    @Autowired
+    DeviceInfoManage deviceInfoManage;
 
     @Override
     public String save(Request<DeviceHeartBeat> DeviceHeartBeatRequest) {
-        log.info("心跳上报接口， 当前设备信息{}", DeviceInfoMap.getDeviceInfoMap().get(DeviceHeartBeatRequest.getDeviceUniqueCode()));
+//        String deviceUniqueCode = DeviceHeartBeatRequest.getDeviceUniqueCode();
+        log.info("心跳上报接口， 当前设备信息{}", DeviceHeartBeatRequest.getData());
         String time = MyLocalTimeUtil.getLocalDataTime();
 
         Response<DeviceHeartBeat> response = new Response<>();
@@ -54,23 +57,33 @@ public class ServerApiServiceImpl implements ServerApiService {
         String s = JsonUtils.toJsonStringNotNull(response, new TypeToken<Response<DeviceHeartBeat>>() {
         }.getType());
         log.info("心跳上报接口， 返回数据：{}", s);
-        // 项目初期，未使用数据库 这里 isDownloadMap 进行赋值
-        DeviceInfoMap.initDownloadMap(DeviceHeartBeatRequest.getDeviceUniqueCode());
 
-        DeviceInfoMap.online(DeviceHeartBeatRequest);
+//        类 RequestInterceptor 已做上线处理 这里不做任何处理
         return s;
     }
 
-    public void downloadAuthority(String deviceUniqueCode){
+    /**
+     * 根据设备mac 地址下载随机的 downloadCount（默认：30） 个 未下载的权限权限数据
+     *
+     * @param deviceUniqueCode 设备mac 地址
+     */
+    public void downloadAuthority(String deviceUniqueCode) {
         /*
          * 进行 人员信息初始化
          */
 
         //100人下载 设备概率 卡死 改为30人
-        int downloadCount = 30;
-        if(PersonInfo.getPersonInfoMap().isEmpty()){
-            new Thread(()-> personInfo.init()).start();
-            while (PersonInfo.getPersonInfoMap().keySet().size() <= downloadCount){
+        int downloadCount = 2;
+
+        /*
+        redis 键： personInfo:uniqueCode:set 为空，进行初始化人员操作
+         */
+        Set<String> personInfoUniqueCodeSet = personInfoManage.getPersonInfoUniqueCodeSet();
+        System.out.println("personInfoUniqueCodeSet.size() = " + personInfoUniqueCodeSet.size());
+        if (personInfoUniqueCodeSet.isEmpty()) {
+            new Thread(() -> personInfoManage.init()).start();
+            // 循环等待，直到 返回的set 长度 >= 需要下载的长度时，退出循环
+            while (personInfoManage.getUniqueCodeSetSize() < downloadCount) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException e) {
@@ -79,78 +92,53 @@ public class ServerApiServiceImpl implements ServerApiService {
             }
         }
         /*
-         * 开始进行权限下载
+        如果设备没有 授权人员下载 进行授权
          */
-        DeviceInfo deviceInfo = DeviceInfoMap.getDeviceInfoMap().get(deviceUniqueCode);
-
-        Request<List<DownloadAuthorityData>> downloadAuthorityDataRequest = new Request<>();
-        downloadAuthorityDataRequest.setTimeStamp(MyLocalTimeUtil.getLocalDataTime());
-        downloadAuthorityDataRequest.setDeviceUniqueCode(deviceUniqueCode);
-
-        List<DownloadAuthorityData> downloadAuthorityDataList = new ArrayList<>();
-        /*
-        当人数超过100人时，随机下载100个；
-     * 100人下载 设备概率 卡死 改为30人
-         */
-        List<String> uniqueCodeList = new ArrayList<>(PersonInfo.getPersonInfoMap().keySet());
-        HashSet<String> uniqueCodeSet= new HashSet<>();
-        List<String> nameList = new ArrayList<>();
-        // 获取 随机的100个不同的人
-        if(uniqueCodeList.size() > downloadCount) {
-            int subscript;
-            for(int i = 0; i < downloadCount; i++){
-                subscript = new Random().nextInt(uniqueCodeList.size());
-                while (uniqueCodeSet.contains(uniqueCodeList.get(subscript))){
-                    subscript = new Random().nextInt(uniqueCodeList.size());
-                }
-                uniqueCodeSet.add(uniqueCodeList.get(subscript));
-                nameList.add(PersonInfo.getPersonInfoMap().get(uniqueCodeList.get(subscript)).getPersonName());
-            }
-        }else {
-            downloadCount = uniqueCodeList.size();
-            uniqueCodeList.forEach(uniqueCode -> {
-                uniqueCodeSet.add(uniqueCode);
-                nameList.add(PersonInfo.getPersonInfoMap().get(uniqueCode).getPersonName());
-            });
-
+        if (!redisUtil.hasValueInSet(RedisKeys.addedDownloadDeviceSet, deviceUniqueCode)) {
+            deviceInfoManage.addDeviceAuthority(deviceUniqueCode);
         }
-        uniqueCodeSet.forEach(uniqueCode -> downloadAuthorityDataList.add(PersonInfo.getPersonInfoMap().get(uniqueCode)));
 
-        downloadAuthorityDataRequest.setData(downloadAuthorityDataList);
-
-        String requestParam = JsonUtils.toJsonStringNotNull(downloadAuthorityDataRequest,
-                new TypeToken<Request<List<DownloadAuthorityData>>>() {}.getType());
-//        log.info("权限下载参数：{}", requestParam);
         /*
         发送权限下发请求
          */
-        HttpHeaders headers = HttpHeadersUtil.getHeaders();
-        HttpEntity<String> httpEntity = new HttpEntity<>(requestParam, headers);
-        String url = UrlUtil.getUrl(deviceInfo.getDeviceIp(), deviceInfo.getDevicePort(), FaceDeviceApiUri.downloadAuthorityData);
+        String deviceIp = deviceInfoManage.getDeviceIp(deviceUniqueCode);
+        String devicePort = deviceInfoManage.getDevicePort(deviceUniqueCode);
+        if(deviceIp != null && devicePort !=null){
+            /*
+             * 合成权限下载数据
+             */
+            Request<List<DownloadAuthorityData>> downloadAuthorityDataRequest = new Request<>();
+            downloadAuthorityDataRequest.setTimeStamp(MyLocalTimeUtil.getLocalDataTime());
+            downloadAuthorityDataRequest.setDeviceUniqueCode(deviceUniqueCode);
+            List<DownloadAuthorityData> downloadAuthorityDataList = personInfoManage.getDownloadAuthorityDataList(deviceUniqueCode,downloadCount);
+            // 无可下载人员时 退出
+            if(downloadAuthorityDataList.size() == 0) return;
+            downloadAuthorityDataRequest.setData(downloadAuthorityDataList);
 
-        log.info("下载人员身份数据：Url={}, 数据长度：{}", url, requestParam.length());
-        try {
-            ResponseEntity<String> responseEntity = restTemplate.postForEntity(url, httpEntity, String.class);
-            log.info("设备返回：{}", responseEntity.getBody());
-        }catch (Exception e){
-            log.error("下载人员身份数据：Url={}, 设备: {} 未返回数据", url, deviceUniqueCode);
+            String requestParam = JsonUtils.toJsonStringNotNull(downloadAuthorityDataRequest,
+                    new TypeToken<Request<List<DownloadAuthorityData>>>() {
+                    }.getType());
+
+            String url = UrlUtil.getUrl(deviceIp,devicePort,
+                    FaceDeviceApiUri.downloadAuthorityData);
+            log.info("下载人员身份数据：Url={}, 数据长度：{}", url, requestParam.length());
+            restTemplateUtil.post(url, requestParam);
+
+            // 暂时不考虑是否下载成功，将下载标志位置为false
+            List<String> uniqueCodeList = new ArrayList<>();
+            downloadAuthorityDataList.forEach(downloadAuthorityData -> uniqueCodeList.add(downloadAuthorityData.getUniqueCode()));
+            personInfoManage.downLoading(deviceUniqueCode, uniqueCodeList);
         }
 
-        // 暂时不考虑是否下载成功，将下载标志位置为false
-        DeviceInfoMap.getIsDownloadMap().put(deviceUniqueCode, false);
-        personInfo.addDownload(deviceUniqueCode, uniqueCodeSet.size(), uniqueCodeSet);
     }
 
     @Override
     public String noticeOfDownloadAuthorityData(Request<NoticeOfDownloadAuthorityData> noticeOfDownloadAuthorityDataRequest) {
-        String isReady = noticeOfDownloadAuthorityDataRequest.getData().getIsReady();
+        String isReady = noticeOfDownloadAuthorityDataRequest.getData() == null ? null : noticeOfDownloadAuthorityDataRequest.getData().getIsReady();
         String deviceUniqueCode = noticeOfDownloadAuthorityDataRequest.getDeviceUniqueCode();
 
-        if("Y".equals(isReady)){
-            if (DeviceInfoMap.getIsDownloadMap().containsKey(deviceUniqueCode) &&
-                    DeviceInfoMap.getIsDownloadMap().get(deviceUniqueCode)){
-                new Thread(()->downloadAuthority(deviceUniqueCode)).start();
-            }
+        if ("Y".equals(isReady)) {
+            new Thread(() -> downloadAuthority(deviceUniqueCode)).start();
         }
 
         Response<String> response = new Response<>();
@@ -162,26 +150,24 @@ public class ServerApiServiceImpl implements ServerApiService {
     @Override
     public String uploadAuthorityDealResult(Request<UploadAuthorityDealResult> uploadAuthorityDealResultRequest) {
         String deviceUniqueCode = uploadAuthorityDealResultRequest.getDeviceUniqueCode();
-        String code = uploadAuthorityDealResultRequest.getData().getCode();
-        String msg = uploadAuthorityDealResultRequest.getData().getMsg();
-        String uniqueCode = uploadAuthorityDealResultRequest.getData().getUniqueCode();
-        if("0".equals(code)){
-            log.info("设备：{},处理权限数据成功，处理结果：{}", deviceUniqueCode, msg);
-            personInfo.downloadSuccess(deviceUniqueCode, uniqueCode);
-        }else {
-            log.info("设备：{},处理权限数据失败！，处理结果{}，失败信息：{}", deviceUniqueCode, code, msg);
-            Map<String, HashMap<String,  PersonInfo.ErrorPerson>> downErrorInfoMap = PersonInfo.getDownErrorInfoMap();
-            //
-            if(downErrorInfoMap.containsKey(deviceUniqueCode) &&
-                    !ObjectUtils.isEmpty(downErrorInfoMap.get(deviceUniqueCode)) &&
-                    downErrorInfoMap.get(deviceUniqueCode).containsKey(uniqueCode)){
-                downErrorInfoMap.get(deviceUniqueCode).get(uniqueCode).setErrorMsg(msg);
-            }
-//            else {
-//                HashMap<String, PersonInfo.ErrorPerson> temp = new HashMap<>();
-//                downErrorInfoMap.put(deviceUniqueCode, temp);
-//            }
+        String code = null;
+        String msg = null;
+        String uniqueCode = null;
+        if (uploadAuthorityDealResultRequest.getData() != null) {
+            code = uploadAuthorityDealResultRequest.getData().getCode();
+            msg = uploadAuthorityDealResultRequest.getData().getMsg();
+            uniqueCode = uploadAuthorityDealResultRequest.getData().getUniqueCode();
         }
+
+        personInfoManage.updateDownLoadMassageCount(deviceUniqueCode, uniqueCode);
+        if ("0".equals(code)) {
+            log.info("设备：{},处理权限数据成功，处理结果：{}", deviceUniqueCode, msg);
+            personInfoManage.downloadSuccess(deviceUniqueCode, uniqueCode, msg);
+        } else {
+            log.info("设备：{},处理权限数据失败！，处理结果{}，失败信息：{}", deviceUniqueCode, code, msg);
+            personInfoManage.downloadFail(deviceUniqueCode, uniqueCode, msg);
+        }
+
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);
@@ -191,12 +177,8 @@ public class ServerApiServiceImpl implements ServerApiService {
     @Override
     public String upLoadRecords(Request<UpLoadRecords> request) {
         // 保存记录
-//        Record record = new Record();
-//        record.setCount(1);
-//        record.setUniqueCode(request.getData().getUniqueCode());
-//        record.setName(PersonInfo.getPersonInfoMap().get(request.getData().getUniqueCode()).getPersonName());
-//        DeviceInfoMap.addRecordMap(request.getDeviceUniqueCode(), record);
-        DeviceInfoMap.addRecordMap(request.getDeviceUniqueCode());
+        deviceInfoManage.saveRecord(request.getDeviceUniqueCode(), request.getData());
+
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);
@@ -204,7 +186,10 @@ public class ServerApiServiceImpl implements ServerApiService {
     }
 
     @Override
-    public String noticeOfDeviceParamsUpdate(Request request) {
+    public String noticeOfDeviceParamsUpdate(Request<NoticeOfDeviceParamsUpdate> request) {
+        /*
+         * 暂时不做处理
+         */
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);
@@ -212,7 +197,36 @@ public class ServerApiServiceImpl implements ServerApiService {
     }
 
     @Override
-    public String noticeOfCardSystemInit(Request request) {
+    public String noticeOfCardSystemInit(Request<NoticeOfCardSystemInit> request) {
+        /*
+         * 暂时不做处理
+         */
+        Response<String> response = new Response<>();
+        String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
+        log.info("返回数据：{}", responseJson);
+        return responseJson;
+    }
+
+    @Autowired
+    DeviceInfoDao deviceInfoDao;
+
+    @Override
+    public String noticeOfUpgradeApp(Request<NoticeOfUpgradeApp> request) {
+        String key = RedisKeys.deviceInoUpdateVersionPredix + request.getDeviceUniqueCode();
+        if (request.getData() != null) {
+            DeviceVersion deviceVersion = redisUtil.hasKey(key) ?
+                    deviceInfoDao.getDeviceVersion(request.getDeviceUniqueCode()) : new DeviceVersion();
+            /*
+            先做保存软件信息， 硬件信息 接口未实现，先不做
+             */
+            deviceVersion.setDeviceUniqueCode(request.getDeviceUniqueCode());
+            deviceVersion.setLastTimeSoftwareVersion(deviceVersion.getSoftwareVersionUpdateTime());
+            deviceVersion.setHardwareVersionUpdateTime(request.getTimeStamp());
+            deviceVersion.setSoftwareVersion(request.getData().getAppVersion());
+
+            deviceInfoDao.saveDeviceVersion(request.getDeviceUniqueCode(), deviceVersion);
+        }
+
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);
@@ -220,7 +234,7 @@ public class ServerApiServiceImpl implements ServerApiService {
     }
 
     @Override
-    public String noticeOfUpgradeApp(Request request) {
+    public String noticeOfResetAuthorityData(Request<String> request) {
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);
@@ -228,23 +242,25 @@ public class ServerApiServiceImpl implements ServerApiService {
     }
 
     @Override
-    public String noticeOfResetAuthorityData(Request request) {
-        Response<String> response = new Response<>();
-        String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
+    public String getAccessPermission(Request<GetAccessPermissionRequest> request) {
+        GetAccessPermissionResponse getAccessPermissionResponse = new GetAccessPermissionResponse();
+        getAccessPermissionResponse.setPermission("Y");
+        getAccessPermissionResponse.setDescription("区域内无进场记录");
+
+        Response<GetAccessPermissionResponse> response = new Response<>();
+        response.setData(getAccessPermissionResponse);
+
+        String responseJson = JsonUtils.toJsonStringWithNull(response, new TypeToken<Response<GetAccessPermissionResponse>>(){}.getType());
         log.info("返回数据：{}", responseJson);
         return responseJson;
     }
 
     @Override
-    public String getAccessPermission(Request request) {
-        Response<String> response = new Response<>();
-        String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
-        log.info("返回数据：{}", responseJson);
-        return responseJson;
-    }
-
-    @Override
-    public String uploadDoorStatus(Request request) {
+    public String uploadDoorStatus(Request<UploadDoorStatus> request) {
+        deviceInfoManage.saveDeviceDoorStatus(
+                request.getDeviceUniqueCode(),
+                JsonUtils.toJsonStringWithNull(request, new TypeToken<Request<UploadDoorStatus>>(){}.getType())
+        );
         Response<String> response = new Response<>();
         String responseJson = JsonUtils.toJsonStringWithNull(response, Response.class);
         log.info("返回数据：{}", responseJson);

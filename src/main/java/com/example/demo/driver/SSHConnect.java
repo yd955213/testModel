@@ -20,7 +20,7 @@ import java.util.Properties;
  * @description: ssh链接
  * @modifiedBy:
  */
-@Component
+
 @Log4j2
 public class SSHConnect {
     /**
@@ -30,8 +30,6 @@ public class SSHConnect {
      * 3、最后调用disconnect() 关闭连接
      */
 
-    @Autowired
-    SshUser sshUser;
     private Session session;
     /**
      *     static Channel getChannel(String type) {
@@ -57,18 +55,21 @@ public class SSHConnect {
      *     }
      */
     // ChannelExec负责通过SSH执行Shell命令
-//    private final String type = "exec";
-
 
     public void createSshConnect(String ip) {
         final JSch jSch = new JSch();
+
+        SshUser sshUser = new SshUser();
         sshUser.setServerIP(ip);
 
-        if(sshUser.getPort() == 0){
+
+        if(sshUser.getPort() <= 0){
             sshUser.setPort(22);
         }
+
         try {
-            session = jSch.getSession(sshUser.getUserName(), sshUser.getServerIP(), sshUser.getPort());log.debug("ssh session created!");
+            session = jSch.getSession(sshUser.getUserName(), sshUser.getServerIP(), sshUser.getPort());
+            log.debug("ssh session created!");
             if(ObjectUtils.isEmpty(session)){
                 log.info("ssh链接失败, 参数：{}", sshUser.toString());
                 return;
@@ -83,7 +84,7 @@ public class SSHConnect {
             session.connect(); // 通过Session建立链接
             log.debug("Session connected.");
         } catch (JSchException e) {
-            log.error("ssh 链接失败，详细信息：{}", e.getMessage());
+            log.error("ssh 建立链接失败，createSshConnect方法错误详细信息：{}", e.getMessage());
             disconnect();
         }
     }
@@ -93,8 +94,8 @@ public class SSHConnect {
      * @param serverIP 需要连接的服务器ip
      * @param command 命令
      */
-    public void executeCommand(String serverIP, String command){
-        if (session != null) {
+    public void executeCommand(String serverIP, String command) throws Exception {
+        if (session.isConnected() ) {
             disconnect();
             session = null;
         }
@@ -102,7 +103,7 @@ public class SSHConnect {
         executeCommand(command);
         disconnect();
     }
-    public void executeCommand(String command){
+    public void executeCommand(String command) throws Exception {
         ChannelExec execChannel = null;
 
         if(session == null){
@@ -110,22 +111,12 @@ public class SSHConnect {
             return;
         }
 
-        try {
-            execChannel = (ChannelExec) session.openChannel("exec");
-            InputStream outputStream = execChannel.getInputStream();
-            execChannel.setCommand(command);
-            execChannel.connect();
-            String s = IOUtils.toString(outputStream, StandardCharsets.UTF_8);
-            System.out.println(s);
-        } catch (JSchException ex) {
-            log.error("ssh 执行命令失败，详细信息：{}", ex.getMessage());
-        }catch (IOException e) {
-            e.printStackTrace();
-        }finally {
-            if (execChannel != null) {
-                execChannel.disconnect();
-            }
-        }
+        execChannel = (ChannelExec) session.openChannel("exec");
+        InputStream outputStream = execChannel.getInputStream();
+        execChannel.setCommand(command);
+        execChannel.connect();
+        IOUtils.toString(outputStream, StandardCharsets.UTF_8);
+        execChannel.disconnect();
 
     }
 

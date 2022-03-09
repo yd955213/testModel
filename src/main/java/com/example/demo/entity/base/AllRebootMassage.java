@@ -5,15 +5,14 @@ import lombok.NoArgsConstructor;
 
 /**
  * @author: yd
- * @date: 2022-02-21
+ * @date: 2022-03-08
  * @version: 1.0
  * @description:
  * @modifiedBy:
  */
 @NoArgsConstructor
 @Data
-public class Record {
-    String uniqueCode;
-    String name;
-    Integer count=0;
+public class AllRebootMassage {
+    public RebootMassage rebootMassage;
+    public String deviceUniqueCode;
 }

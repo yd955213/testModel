@@ -5,9 +5,12 @@ import com.alibaba.fastjson.TypeReference;
 import com.example.demo.entity.api.DeviceHeartBeat;
 import com.example.demo.entity.api.Request;
 import com.example.demo.entity.base.DeviceInfo;
-import com.example.demo.service.init.DeviceInfoMap;
+import com.example.demo.service.init.DeviceInfoManage;
+import com.example.demo.utils.MyLocalTimeUtil;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -26,7 +29,8 @@ import java.util.Map;
 @Log4j2
 public class RequestInterceptor implements HandlerInterceptor {
 
-    private final Map<String, DeviceInfo> deviceInfoMap = DeviceInfoMap.getDeviceInfoMap();
+    @Autowired
+    DeviceInfoManage deviceInfoManage;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -38,7 +42,6 @@ public class RequestInterceptor implements HandlerInterceptor {
         String queryString = request.getRequestURI();
         log.info("请求地址:{}", queryString);
 
-
         //获取请求body
         byte[] bodyBytes = StreamUtils.copyToByteArray(request.getInputStream());
         String body = new String(bodyBytes, request.getCharacterEncoding());
@@ -49,25 +52,20 @@ public class RequestInterceptor implements HandlerInterceptor {
         if("/ServerApi/DeviceHeartBeat".equals(queryString)){
             Request<DeviceHeartBeat> requestJson = JSONObject.parseObject(body, new TypeReference<Request<DeviceHeartBeat>>(){}.getType());
             if (requestJson != null){
-                // 如果Ip 和端口变话 则修改
-                if (deviceInfoMap.containsKey(requestJson.getDeviceUniqueCode())){
-                    if(!ip.equals(deviceInfoMap.get(requestJson.getDeviceUniqueCode()).getDeviceIp())){
-                        deviceInfoMap.get(requestJson.getDeviceUniqueCode()).setDeviceIp(ip);
-                    }
-                    if(!requestJson.getData().getDevicePort().equals(deviceInfoMap.get(requestJson.getDeviceUniqueCode()).getDevicePort())){
-                        deviceInfoMap.get(requestJson.getDeviceUniqueCode()).setDevicePort(requestJson.getData().getDevicePort());
-                    }
-                }else {
+                String deviceUniqueCode = requestJson.getDeviceUniqueCode();
+                Integer devicePort = requestJson.getData() == null? -1: requestJson.getData().getDevicePort();
+                if(!ObjectUtils.isEmpty(deviceUniqueCode) && -1 != devicePort){
                     // 添加设备 所有信息
                     DeviceInfo deviceInfo = new DeviceInfo();
-                    deviceInfo.setDeviceUniqueCode(requestJson.getDeviceUniqueCode());
+                    deviceInfo.setDeviceUniqueCode(deviceUniqueCode);
                     deviceInfo.setDeviceIp(ip);
-                    deviceInfo.setDevicePort(requestJson.getData().getDevicePort());
-                    deviceInfoMap.put(deviceInfo.getDeviceUniqueCode(), deviceInfo);
+                    deviceInfo.setDevicePort(devicePort);
+                    deviceInfo.setTimeStamp(MyLocalTimeUtil.getLocalDataTime());
+                    deviceInfo.setCurrentTime(System.currentTimeMillis());
+                    deviceInfoManage.online(deviceInfo);
                 }
             }
         }
-//        return HandlerInterceptor.super.preHandle(request, response, handler);
         return true;
     }
 }

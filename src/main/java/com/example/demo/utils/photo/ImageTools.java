@@ -1,6 +1,8 @@
 package com.example.demo.utils.photo;
 
+import com.example.demo.utils.FileUtil;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
@@ -14,6 +16,7 @@ import java.util.*;
  * @modifiedBy:
  */
 @Log4j2
+@Component
 public class ImageTools {
 
     /**
@@ -35,10 +38,9 @@ public class ImageTools {
         String imageBase64 = null;
         try {
             file = ResourceUtils.getFile(filePath);
-            if(file.exists())
-                imageBase64 = imageToBase64(file);
+            if(file.exists() && FileUtil.isImage(file)) imageBase64 = imageToBase64(file);
         } catch (FileNotFoundException e) {
-            log.info("照片转base64,传入路径错误,文件未找到：{}", filePath );
+            log.error("照片转base64,传入路径错误,文件未找到：{}", filePath );
         }
         return imageBase64;
     }

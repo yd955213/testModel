@@ -30,12 +30,13 @@ public class RestTemplateUtil {
 
     /**
      * 带参数的 get 请求
-     * @param url 请求地址
-     * @param mediaType  ContentType
+     *
+     * @param url           请求地址
+     * @param mediaType     ContentType
      * @param multiValueMap 参数
      * @return 响应体
      */
-    public String get(String url, MediaType mediaType, MultiValueMap<String, String> multiValueMap){
+    public String get(String url, MediaType mediaType, MultiValueMap<String, String> multiValueMap) {
         // 设置请求头
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(mediaType);
@@ -51,7 +52,7 @@ public class RestTemplateUtil {
             String body = responseEntity.getBody();
             log.info("get请求成功：url:{} ,返回信息：{}", uri, body);
             return body;
-        }catch (Exception e){
+        } catch (Exception e) {
             // 自定义请求失败的参数并返回  现在直接返回null
             log.info("get请求失败：url:{}，异常信息：{}", uri, e.getMessage());
             return null;
@@ -60,42 +61,45 @@ public class RestTemplateUtil {
 
     /**
      * post请求 json格式
-     * @param url url
+     *
+     * @param url              url
      * @param requestParamJson json字符串
      * @return String
      */
-    public String post(String url, String requestParamJson){
+    public String post(String url, String requestParamJson) {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.valueOf(MediaType.APPLICATION_JSON_VALUE));
         HttpEntity<String> httpEntity = new HttpEntity<>(requestParamJson, httpHeaders);
         ResponseEntity<String> responseEntity;
         try {
-            log.info("post请求：url:{}, 参数：{}", url, requestParamJson);
-            responseEntity = restTemplate.postForEntity(url, httpEntity, String.class);
+            //权限下载 图片太大导致 日志内容太大， 这里只下发送的数据长的
+            log.info("post请求：url:{}, 参数：{}", url, requestParamJson.length() > 1000 ? ("参数长度过长，只记录长度为：" +requestParamJson.length()) : requestParamJson);
+            responseEntity = restTemplate.exchange(url, HttpMethod.POST, httpEntity, String.class);
             log.info("post请求成功：url:{} ,返回信息：{}", url, responseEntity.getBody());
             return responseEntity.getBody();
-        }catch (Exception e){
-            log.info("post请求失败：url:{}，异常信息：{}", url, e.getMessage());
+        } catch (Exception e) {
+            log.error("post请求失败：url:{}，异常信息：{}", url, e.getMessage());
             return null;
         }
     }
-    public String post(URI url, String requestParamJson){
+
+    public String post(URI url, String requestParamJson) {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.valueOf(MediaType.APPLICATION_JSON_VALUE));
         HttpEntity<String> httpEntity = new HttpEntity<>(requestParamJson, httpHeaders);
         ResponseEntity<String> responseEntity;
         try {
-            log.info("post请求：url:{}, 参数：{}", url, requestParamJson);
+            log.info("post请求：url:{}, 参数：{}", url, requestParamJson.length() > 1000 ? requestParamJson.length() : requestParamJson);
             responseEntity = restTemplate.postForEntity(url, httpEntity, String.class);
             log.info("post请求成功：url:{} ,返回信息：{}", url, responseEntity.getBody());
             return responseEntity.getBody();
-        }catch (Exception e){
+        } catch (Exception e) {
             log.info("post请求失败：url:{}，异常信息：{}", url, e.getMessage());
             return null;
         }
     }
 
-    public String get(String url){
+    public String get(String url) {
 
         ResponseEntity<String> responseEntity;
         try {
@@ -104,23 +108,24 @@ public class RestTemplateUtil {
             String body = responseEntity.getBody();
             log.info("get请求成功：url:{} ,返回信息：{}", url, body);
             return body;
-        }catch (Exception e){
+        } catch (Exception e) {
             // 自定义请求失败的参数并返回  现在直接返回null
             log.info("get请求失败：url:{}，异常信息：{}", url, e.getMessage());
             return null;
         }
     }
-    public ResponseEntity<FileSystemResource> upload(String filePath){
+
+    public ResponseEntity<FileSystemResource> upload(String filePath) {
         File file = new File(filePath);
 //        if(file.exists()){
-            HttpHeaders httpHeaders = new HttpHeaders();
-            httpHeaders.add("Content-Disposition",  "attachment;fileName=" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8));
-            httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            FileSystemResource fileSystemResource = new FileSystemResource(file);
-            MultiValueMap<String, Object> multiValueMap = new LinkedMultiValueMap<>();
-            multiValueMap.add("uploadFile", fileSystemResource);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add("Content-Disposition", "attachment;fileName=" + URLEncoder.encode(file.getName(), StandardCharsets.UTF_8));
+        httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        FileSystemResource fileSystemResource = new FileSystemResource(file);
+        MultiValueMap<String, Object> multiValueMap = new LinkedMultiValueMap<>();
+        multiValueMap.add("uploadFile", fileSystemResource);
 
-            log.info("开始进行文件上传");
+        log.info("开始进行文件上传");
 //        }
         return ResponseEntity.ok()
                 .headers(httpHeaders)
@@ -128,8 +133,11 @@ public class RestTemplateUtil {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(fileSystemResource);
     }
-    public String downLoad(String url){
+
+    public String downLoad(String url) {
 
         return null;
     }
+
+
 }
